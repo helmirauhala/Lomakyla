@@ -556,6 +556,14 @@ public class MokkiVarausApp extends Application {
 
 
 
+
+
+
+
+
+
+
+
     // === Samalla tyylillä toteuta createLisaaMokkiPane(), createHaeMokitPane(), jne. ===
     // Käytä Workbenchin metodeja suoraan tai kopioi SQL-logiikka tähän luokkaan.
 
