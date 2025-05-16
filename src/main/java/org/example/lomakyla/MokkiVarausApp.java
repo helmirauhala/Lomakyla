@@ -17,7 +17,7 @@ public class MokkiVarausApp extends Application {
     private static final String URL = "jdbc:mysql://localhost:3306/lomaparatiisi"
             + "?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
     private static final String USER = "root";
-    private static final String PASSWORD = "helmi";
+    private static final String PASSWORD = "mysql123456789";
 
     @Override
     public void start(Stage primaryStage) {
@@ -42,6 +42,8 @@ public class MokkiVarausApp extends Application {
         tabPane.getTabs().add(new Tab("Hae laskut", createHaeLaskutPane()));
         tabPane.getTabs().add(new Tab("Merkitse maksetuksi", createMerkitseMaksetuksiPane()));
         tabPane.getTabs().add(new Tab("Poista lasku", createPoistaLaskuPane()));
+        tabPane.getTabs().add(new Tab("Myyntiraportti", createMyyntiraporttiPane()));
+
 
         Scene scene = new Scene(tabPane, 700, 600);
         primaryStage.setScene(scene);
@@ -554,12 +556,70 @@ public class MokkiVarausApp extends Application {
         return vbox;
     }
 
+    // myyntiraportti
 
+    private Pane createMyyntiraporttiPane() {
+        VBox vbox = new VBox(10);
+        vbox.setPadding(new Insets(10));
 
+        Label otsikko = new Label("Valitse aikaväli raportille:");
 
+        DatePicker alkuPvmPicker = new DatePicker();
+        alkuPvmPicker.setPromptText("Alkupäivä");
 
+        DatePicker loppuPvmPicker = new DatePicker();
+        loppuPvmPicker.setPromptText("Loppupäivä");
 
+        Button haeRaporttiButton = new Button("Luo raportti");
 
+        TextArea tulosArea = new TextArea();
+        tulosArea.setEditable(false);
+
+        haeRaporttiButton.setOnAction(e -> {
+            LocalDate alku = alkuPvmPicker.getValue();
+            LocalDate loppu = loppuPvmPicker.getValue();
+
+            if (alku == null || loppu == null) {
+                new Alert(Alert.AlertType.WARNING, "Valitse molemmat päivämäärät!").show();
+                return;
+            }
+
+            try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD)) {
+                var stmt = conn.prepareStatement(
+                        "SELECT COUNT(*) AS laskujen_maara, SUM(l.summa) AS kokonaissumma " +
+                                "FROM laskujen_hallinta l " +
+                                "JOIN varaus v ON l.varaus_id = v.varaus_id " +
+                                "WHERE l.tila = true AND v.paattyminen BETWEEN ? AND ?"
+                );
+                stmt.setDate(1, java.sql.Date.valueOf(alku));
+                stmt.setDate(2, java.sql.Date.valueOf(loppu));
+
+                var rs = stmt.executeQuery();
+
+                if (rs.next()) {
+                    int maara = rs.getInt("laskujen_maara");
+                    double summa = rs.getDouble("kokonaissumma");
+
+                    String raportti = String.format(
+                            "Aikavälillä %s – %s:\n\n" +
+                                    "Laskujen määrä: %d\n" +
+                                    "Laskujen kokonaissumma: %.2f €",
+                            alku, loppu, maara, summa);
+
+                    tulosArea.setText(raportti);
+                } else {
+                    tulosArea.setText("Ei laskuja valitulta ajalta.");
+                }
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                new Alert(Alert.AlertType.ERROR, "Virhe raportin luonnissa: " + ex.getMessage()).show();
+            }
+        });
+
+        vbox.getChildren().addAll(otsikko, alkuPvmPicker, loppuPvmPicker, haeRaporttiButton, tulosArea);
+        return vbox;
+    }
 
 
 
@@ -571,4 +631,6 @@ public class MokkiVarausApp extends Application {
         launch(args);
     }
 }
+
+
 
